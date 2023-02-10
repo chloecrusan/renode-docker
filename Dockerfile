@@ -2,38 +2,19 @@
 # on an x86 desktop or laptop. The framework can be used for debugging and automated testing.
 FROM ubuntu:20.04
 
-LABEL maintainer="Piotr Zierhoffer <pzierhoffer@antmicro.com>"
-
 # Install main dependencies and some useful tools
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates sudo wget && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends ca-certificates sudo wget
 
-# Set up users
-RUN sed -i.bkp -e \
-      's/%sudo\s\+ALL=(ALL\(:ALL\)\?)\s\+ALL/%sudo ALL=NOPASSWD:ALL/g' \
-      /etc/sudoers
-ARG userId
-ARG groupId
-RUN mkdir -p /home/developer && \
-    echo "developer:x:$userId:$groupId:Developer,,,:/home/developer:/bin/bash" >> /etc/passwd && \
-    echo "developer:x:$userId:" >> /etc/group && \
-    echo "developer ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/developer && \
-    chmod 0440 /etc/sudoers.d/developer && \
-    chown $userId:$groupId -R /home/developer
+ARG RENODE_VERSION=1.13.2
 
-USER developer
-ENV HOME /home/developer
-WORKDIR /home/developer
-
-ARG RENODE_VERSION=1.13.0
-
-# Install Renode
-USER root
 RUN wget https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode_${RENODE_VERSION}_amd64.deb && \
-    apt-get update && \
     apt-get install -y --no-install-recommends ./renode_${RENODE_VERSION}_amd64.deb python3-dev && \
-    rm ./renode_${RENODE_VERSION}_amd64.deb && \
-    rm -rf /var/lib/apt/lists/*
+    rm ./renode_${RENODE_VERSION}_amd64.deb
+
 RUN pip3 install -r /opt/renode/tests/requirements.txt --no-cache-dir
-USER developer
-CMD renode
+RUN apt-get install telnet nmap -y
+COPY *.resc .
+COPY *.repl .
+COPY *.bin .
+CMD renode --disable-wxt
